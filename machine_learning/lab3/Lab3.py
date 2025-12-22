@@ -89,7 +89,6 @@ def main():
     # Параметры
     TRAINING_FILE = "training_text.txt"
 
-    # Проверка существования файла
     if not os.path.exists(TRAINING_FILE):
         print(f"Файл '{TRAINING_FILE}' не найден")
         print("Создание демонстрационного обучающего текста...")
