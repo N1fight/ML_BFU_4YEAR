@@ -86,7 +86,6 @@ def main():
     print("ЛАБОРАТОРНАЯ РАБОТА №3: ГЕНЕРАЦИЯ ТЕКСТА НА LSTM")
     print("=" * 60)
 
-    # Параметры
     TRAINING_FILE = "training_text.txt"
 
     if not os.path.exists(TRAINING_FILE):
