@@ -33,17 +33,19 @@ def prepare_training_data(text, seq_length=50):
 
 def build_model(vocab_size, seq_length=50):
     model = tf.keras.Sequential([
-        tf.keras.layers.Embedding(vocab_size, 256),
-        tf.keras.layers.LSTM(256, return_sequences=True, stateful=False),
-        tf.keras.layers.Dropout(0.2),
-        tf.keras.layers.LSTM(256, stateful=False),
-        tf.keras.layers.Dropout(0.2),
-        tf.keras.layers.Dense(256, activation='relu'),
+        tf.keras.layers.Embedding(vocab_size, 128),
+        tf.keras.layers.LSTM(128, return_sequences=True,
+                             dropout=0.3, recurrent_dropout=0.3),
+        tf.keras.layers.LSTM(128,
+                             dropout=0.3, recurrent_dropout=0.3),
+        tf.keras.layers.Dense(128, activation='relu',
+                              kernel_regularizer=tf.keras.regularizers.l2(0.01)),
+        tf.keras.layers.Dropout(0.4),
         tf.keras.layers.Dense(vocab_size, activation='softmax')
     ])
 
     model.compile(
-        optimizer='adam',
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
         loss='sparse_categorical_crossentropy',
         metrics=['accuracy']
     )
@@ -77,6 +79,7 @@ def generate_text(model, seed_text, char_to_idx, idx_to_char, seq_length=50, num
 
 def create_dataset(X, y, batch_size=64):
     dataset = tf.data.Dataset.from_tensor_slices((X, y))
+    dataset = dataset.shuffle(buffer_size=10000)
     dataset = dataset.batch(batch_size, drop_remainder=True)
     return dataset
 
@@ -128,31 +131,25 @@ def main():
 
     SEQ_LENGTH = 50
     BATCH_SIZE = 64
-    EPOCHS = 20
+    EPOCHS = 50
     GENERATION_LENGTH = 5000
 
     print(f"Подготовка данных (длина последовательности: {SEQ_LENGTH})...")
     X, y, char_to_idx, idx_to_char, chars = prepare_training_data(training_text, SEQ_LENGTH)
 
-    split_idx = int(len(X) * 0.8)
-    X_train, X_val = X[:split_idx], X[split_idx:]
-    y_train, y_val = y[:split_idx], y[split_idx:]
-
     print(f"Создано обучающих примеров: {len(X)}")
     print(f"Размер словаря: {len(chars)}")
 
-    train_dataset = create_dataset(X_train, y_train, BATCH_SIZE)
-    val_dataset = create_dataset(X_val, y_val, BATCH_SIZE)
+    dataset = create_dataset(X, y, BATCH_SIZE)
 
     print("Создание модели LSTM...")
     model = build_model(len(chars))
 
-    print(f"\nНачало обучения ({EPOCHS} эпох)")
+    print(f"\nОбучение модели ({EPOCHS} эпох)")
 
     history = model.fit(
-        train_dataset,
-        validation_data=val_dataset,
-        epochs=1,
+        dataset,
+        epochs=EPOCHS,
         verbose=1
     )
 
@@ -161,16 +158,7 @@ def main():
     print("=" * 60)
     model.summary()
 
-    if EPOCHS > 1:
-        print(f"\nПродолжение обучения (еще {EPOCHS - 1} эпох)")
-        model.fit(
-            train_dataset,
-            validation_data=val_dataset,
-            epochs=EPOCHS - 1,
-            verbose=1
-        )
-
-    print("Выбор seed для генерации")
+    print("\nВыбор seed для генерации")
     start_idx = random.randint(0, len(training_text) - SEQ_LENGTH - 1)
     seed_text = training_text[start_idx:start_idx + SEQ_LENGTH]
     print(f"Seed текст ({len(seed_text)} символов): '{seed_text}'")
